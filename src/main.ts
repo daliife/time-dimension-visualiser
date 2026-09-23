@@ -25,7 +25,7 @@ try {
   const gapInput = required<HTMLInputElement>('#gap');
 
   let frame = 0;
-  let playing = true;
+  let playing = false;
   let accumulator = 0;
   let lastTick = performance.now();
 
@@ -47,7 +47,7 @@ try {
   }
 
   showFrame(0);
-  setPlaying(true);
+  setPlaying(false);
 
   playButton.addEventListener('click', () => setPlaying(!playing));
 

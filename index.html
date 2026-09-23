@@ -9,13 +9,13 @@
     <div id="view"></div>
     <p id="status">Loading clip…</p>
     <aside id="panel" hidden>
-      <button type="button" id="play" aria-pressed="true">Pause</button>
+      <button type="button" id="play" aria-pressed="false">Play</button>
       <label>
-        Time <span id="time-value">0</span>
+        <span class="label-row">Time <span id="time-value">0</span></span>
         <input id="time" type="range" min="0" max="39" value="0" />
       </label>
       <label>
-        Gap
+        <span class="label-row">Gap</span>
         <input id="gap" type="range" min="0" max="100" value="40" />
       </label>
     </aside>

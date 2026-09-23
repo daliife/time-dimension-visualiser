@@ -10,7 +10,8 @@ export type SceneHandle = {
   resize: () => void;
 };
 
-const DIM = 0.25;
+const GHOST_ALPHA = 0.02;
+const CURRENT_ALPHA = 0.55;
 
 export function createScene(container: HTMLElement, volume: Volume): SceneHandle {
   const { frames } = volume;
@@ -26,7 +27,9 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 20);
-  camera.position.set(1.35, 0.78, 2.15);
+  // Face the stack from +X/−Z so the frame is on the left and time recedes to the right.
+  camera.position.set(2.4, 0.99, -2.7);
+  camera.lookAt(0, 0, 0);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enablePan = false;
@@ -35,18 +38,25 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
 
   const uniforms = {
     uVolume: { value: texture },
-    uDim: { value: DIM },
+    uGhost: { value: GHOST_ALPHA },
+    uCurrent: { value: CURRENT_ALPHA },
     uFrames: { value: frames },
     uFrame: { value: 0 },
   };
 
+  const geometry = new THREE.PlaneGeometry(aspect * 0.98, 0.98);
+  const frameAttr = new THREE.InstancedBufferAttribute(new Float32Array(frames), 1);
+  geometry.setAttribute('aFrame', frameAttr);
+
   const layers = new THREE.InstancedMesh(
-    new THREE.PlaneGeometry(aspect * 0.98, 0.98),
+    geometry,
     new THREE.ShaderMaterial({
       uniforms,
       vertexShader: LAYER_VERT,
       fragmentShader: LAYER_FRAG,
       side: THREE.DoubleSide,
+      transparent: true,
+      depthWrite: false,
       toneMapped: false,
     }),
     frames,
@@ -55,18 +65,25 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
   scene.add(layers);
 
   let gap = 0.4;
+  let fromFar = true;
   const dummy = new THREE.Object3D();
 
   function layoutLayers() {
     const spread = 0.02 + gap * 2.4;
+    fromFar = camera.position.x >= 0;
     for (let i = 0; i < frames; i++) {
-      dummy.position.set((i / (frames - 1) - 0.5) * spread, 0, 0);
+      // Draw the far slices first so transparency stacks correctly.
+      // Frame 0 stays nearest the default camera (+X).
+      const frame = fromFar ? frames - 1 - i : i;
+      dummy.position.set((0.5 - frame / (frames - 1)) * spread, 0, 0);
       dummy.rotation.set(0, Math.PI / 2, 0);
       dummy.scale.set(1, 1, 1);
       dummy.updateMatrix();
       layers.setMatrixAt(i, dummy.matrix);
+      frameAttr.setX(i, frame);
     }
     layers.instanceMatrix.needsUpdate = true;
+    frameAttr.needsUpdate = true;
   }
 
   layoutLayers();
@@ -83,6 +100,7 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
 
   renderer.setAnimationLoop(() => {
     controls.update();
+    if ((camera.position.x >= 0) !== fromFar) layoutLayers();
     renderer.render(scene, camera);
   });
 
@@ -101,11 +119,12 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
 }
 
 const LAYER_VERT = /* glsl */ `
+  attribute float aFrame;
   varying vec2 vUv;
   varying float vFrame;
   void main() {
     vUv = uv;
-    vFrame = float(gl_InstanceID);
+    vFrame = aFrame;
     vec4 world = instanceMatrix * vec4(position, 1.0);
     gl_Position = projectionMatrix * modelViewMatrix * world;
   }
@@ -119,12 +138,13 @@ const LAYER_FRAG = /* glsl */ `
   uniform sampler3D uVolume;
   uniform float uFrames;
   uniform float uFrame;
-  uniform float uDim;
+  uniform float uGhost;
+  uniform float uCurrent;
   void main() {
     float z = (vFrame + 0.5) / uFrames;
     vec3 color = texture(uVolume, vec3(1.0 - vUv.x, 1.0 - vUv.y, z)).rgb;
     float onLayer = 1.0 - step(0.5, abs(vFrame - uFrame));
-    color *= mix(uDim, 1.0, onLayer);
-    gl_FragColor = vec4(color, 1.0);
+    float alpha = mix(uGhost, uCurrent, onLayer);
+    gl_FragColor = vec4(color, alpha);
   }
 `;
