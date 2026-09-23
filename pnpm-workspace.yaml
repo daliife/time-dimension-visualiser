@@ -1,0 +1,11 @@
+# Delay new publishes by a day, and reject a recent trust downgrade.
+minimumReleaseAge: 1440
+trustPolicy: no-downgrade
+trustPolicyIgnoreAfter: 10080
+blockExoticSubdeps: true
+strictDepBuilds: true
+
+audit:
+  level: high
+allowBuilds:
+  esbuild: false

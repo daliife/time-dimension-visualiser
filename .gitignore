@@ -1,5 +1,7 @@
 node_modules
 dist
+package-lock.json
+yarn.lock
 .DS_Store
 .cache-sample.mp4
 .cache-frames
