@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pixel time visualiser</title>
+  </head>
+  <body>
+    <div id="view"></div>
+    <p id="status">Loading clip…</p>
+    <aside id="panel" hidden>
+      <button type="button" id="play" aria-pressed="true">Pause</button>
+      <label>
+        Time <span id="time-value">0</span>
+        <input id="time" type="range" min="0" max="39" value="0" />
+      </label>
+      <label>
+        Gap
+        <input id="gap" type="range" min="0" max="100" value="40" />
+      </label>
+    </aside>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
