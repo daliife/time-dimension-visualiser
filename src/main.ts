@@ -4,13 +4,20 @@ import { createScene } from './scene';
 
 const view = document.querySelector<HTMLElement>('#view');
 const status = document.querySelector<HTMLElement>('#status');
+const statusTitle = document.querySelector<HTMLElement>('#status-title');
+const statusDetail = document.querySelector<HTMLElement>('#status-detail');
 const panel = document.querySelector<HTMLElement>('#panel');
-if (!view || !status || !panel) throw new Error('Missing page elements');
+if (!view || !status || !statusTitle || !statusDetail || !panel) {
+  throw new Error('Missing page elements');
+}
 
 const FRAME_MS = 100;
 
 try {
-  const volume = await loadClipVolume(`${import.meta.env.BASE_URL}clip.m4v`);
+  const volume = await loadClipVolume(`${import.meta.env.BASE_URL}clip.m4v`, (done, total) => {
+    statusDetail.textContent =
+      done === 0 ? `Preparing ${total} frames…` : `Frame ${done} of ${total}`;
+  });
   const scene = createScene(view, volume);
 
   function required<T extends Element>(selector: string): T {
@@ -20,6 +27,9 @@ try {
   }
 
   const playButton = required<HTMLButtonElement>('#play');
+  const playLabel = required<HTMLElement>('#play-label');
+  const playIcon = required<SVGElement>('#icon-play');
+  const pauseIcon = required<SVGElement>('#icon-pause');
   const timeInput = required<HTMLInputElement>('#time');
   const timeValue = required<HTMLElement>('#time-value');
   const gapInput = required<HTMLInputElement>('#gap');
@@ -40,7 +50,9 @@ try {
 
   function setPlaying(next: boolean) {
     playing = next;
-    playButton.textContent = playing ? 'Pause' : 'Play';
+    playLabel.textContent = playing ? 'Pause' : 'Play';
+    playIcon.hidden = playing;
+    pauseIcon.hidden = !playing;
     playButton.setAttribute('aria-pressed', String(playing));
     accumulator = 0;
     lastTick = performance.now();
@@ -78,5 +90,7 @@ try {
   status.hidden = true;
   panel.hidden = false;
 } catch (error) {
-  status.textContent = error instanceof Error ? error.message : 'Could not load the clip';
+  status.classList.add('is-error');
+  statusTitle.textContent = 'Could not load';
+  statusDetail.textContent = error instanceof Error ? error.message : 'Could not load the clip';
 }

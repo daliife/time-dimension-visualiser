@@ -3,7 +3,10 @@ import type { Volume } from './volume';
 const FRAME_WIDTH = 256;
 const FRAME_COUNT = 40;
 
-export async function loadClipVolume(url: string): Promise<Volume> {
+export async function loadClipVolume(
+  url: string,
+  onProgress?: (done: number, total: number) => void,
+): Promise<Volume> {
   const video = document.createElement('video');
   video.muted = true;
   video.playsInline = true;
@@ -24,11 +27,13 @@ export async function loadClipVolume(url: string): Promise<Volume> {
   const stride = width * height * 4;
   const lastTime = Math.max(0, video.duration - 0.05);
 
+  onProgress?.(0, frames);
   for (let frame = 0; frame < frames; frame++) {
     const time = (frame / (frames - 1)) * lastTime;
     await seekTo(video, time);
     ctx.drawImage(video, 0, 0, width, height);
     data.set(ctx.getImageData(0, 0, width, height).data, frame * stride);
+    onProgress?.(frame + 1, frames);
   }
 
   video.removeAttribute('src');
