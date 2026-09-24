@@ -10,8 +10,8 @@ export type SceneHandle = {
   resize: () => void;
 };
 
-const GHOST_ALPHA = 0.02;
-const CURRENT_ALPHA = 0.55;
+const GHOST_ALPHA = 0.08;
+const CURRENT_ALPHA = 0.92;
 
 export function createScene(container: HTMLElement, volume: Volume): SceneHandle {
   const { frames } = volume;
@@ -143,8 +143,11 @@ const LAYER_FRAG = /* glsl */ `
   void main() {
     float z = (vFrame + 0.5) / uFrames;
     vec3 color = texture(uVolume, vec3(1.0 - vUv.x, 1.0 - vUv.y, z)).rgb;
-    float onLayer = 1.0 - step(0.5, abs(vFrame - uFrame));
-    float alpha = mix(uGhost, uCurrent, onLayer);
-    gl_FragColor = vec4(color, alpha);
+    float dist = abs(vFrame - uFrame);
+    float onLayer = 1.0 - step(0.5, dist);
+    float trail = exp(-dist * dist / 120.0);
+    float alpha = mix(uGhost * mix(0.4, 1.0, trail), uCurrent, onLayer);
+    vec3 shown = mix(color * 0.5, color, onLayer);
+    gl_FragColor = vec4(shown, alpha);
   }
 `;
