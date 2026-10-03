@@ -5,4 +5,7 @@ yarn.lock
 .DS_Store
 .cache-sample.mp4
 .cache-crossing.mp4
+.cache-dribble.mp4
+.cache-kick.mp4
+.cache-skate.mp4
 .cache-frames

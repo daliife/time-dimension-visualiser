@@ -37,6 +37,17 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
   renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
   renderer.toneMapping = THREE.NoToneMapping;
   container.appendChild(renderer.domElement);
+  const canvas = renderer.domElement;
+  canvas.tabIndex = 0;
+  canvas.setAttribute(
+    'role',
+    'application',
+  );
+  canvas.setAttribute(
+    'aria-label',
+    'Spacetime cube of the clip. Drag to rotate, scroll to zoom.',
+  );
+  canvas.setAttribute('aria-describedby', 'panel-help');
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 20);
@@ -50,6 +61,21 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
   controls.enablePan = false;
   controls.minDistance = 0.7;
   controls.maxDistance = 8;
+
+  let orbiting = false;
+  canvas.addEventListener('pointerdown', () => {
+    orbiting = true;
+    container.classList.add('view-is-dragging');
+  });
+  const endDrag = () => {
+    if (!orbiting) return;
+    orbiting = false;
+    container.classList.remove('view-is-dragging');
+    container.classList.add('view-orbit-used');
+  };
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+  window.addEventListener('pointerup', endDrag);
 
   const uniforms = {
     uVolume: { value: texture },

@@ -1,7 +1,7 @@
 import type { Volume } from './volume';
 
 const FRAME_WIDTH = 256;
-const FRAME_COUNT = 40;
+const FRAME_COUNT = 72;
 
 export async function loadClipVolume(
   url: string,
