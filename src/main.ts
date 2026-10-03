@@ -14,7 +14,8 @@ if (!view || !status || !statusTitle || !statusDetail || !panel) {
 const FRAME_MS = 100;
 
 try {
-  const volume = await loadClipVolume(`${import.meta.env.BASE_URL}clip.m4v`, (done, total) => {
+  const clip = new URLSearchParams(location.search).get('clip') ?? 'clip';
+  const volume = await loadClipVolume(`${import.meta.env.BASE_URL}${clip}.m4v`, (done, total) => {
     statusDetail.textContent =
       done === 0 ? `Preparing ${total} frames…` : `Frame ${done} of ${total}`;
   });
@@ -27,9 +28,10 @@ try {
   }
 
   const playButton = required<HTMLButtonElement>('#play');
+  const resetViewButton = required<HTMLButtonElement>('#reset-view');
   const playLabel = required<HTMLElement>('#play-label');
-  const playIcon = required<SVGElement>('#icon-play');
-  const pauseIcon = required<SVGElement>('#icon-pause');
+  const playIcon = required<HTMLElement>('#icon-play');
+  const pauseIcon = required<HTMLElement>('#icon-pause');
   const timeInput = required<HTMLInputElement>('#time');
   const timeValue = required<HTMLElement>('#time-value');
   const gapInput = required<HTMLInputElement>('#gap');
@@ -50,10 +52,12 @@ try {
 
   function setPlaying(next: boolean) {
     playing = next;
-    playLabel.textContent = playing ? 'Pause' : 'Play';
-    playIcon.hidden = playing;
-    pauseIcon.hidden = !playing;
+    const label = playing ? 'Pause' : 'Play';
+    playLabel.textContent = label;
+    playButton.setAttribute('aria-label', label);
     playButton.setAttribute('aria-pressed', String(playing));
+    playIcon.toggleAttribute('hidden', playing);
+    pauseIcon.toggleAttribute('hidden', !playing);
     accumulator = 0;
     lastTick = performance.now();
   }
@@ -62,6 +66,7 @@ try {
   setPlaying(false);
 
   playButton.addEventListener('click', () => setPlaying(!playing));
+  resetViewButton.addEventListener('click', () => scene.resetView());
 
   timeInput.addEventListener('input', () => {
     accumulator = 0;

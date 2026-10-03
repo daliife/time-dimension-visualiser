@@ -7,16 +7,29 @@ export type SceneHandle = {
   frameCount: number;
   setFrame: (index: number) => void;
   setGap: (amount: number) => void;
+  resetView: () => void;
   resize: () => void;
 };
 
-const GHOST_ALPHA = 0.08;
-const CURRENT_ALPHA = 0.92;
+const GHOST_SIDE = 0.52;
+const GHOST_SIDE_FRONT = 0.16;
+const GHOST_BACK = 0.2;
+const GHOST_INNER_FRONT = 0.045;
+const GHOST_INNER_FRONT_NEAR = 0.085;
+const GHOST_INNER_REAR = 0.22;
+const GHOST_INNER_REAR_DEEP = 0.38;
+const CURRENT = 0.94;
+const SPREAD = 2.0;
 
 export function createScene(container: HTMLElement, volume: Volume): SceneHandle {
   const { frames } = volume;
   const texture = createVolumeTexture(volume);
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
+
   const aspect = volume.width / volume.height;
+  const imageSize = new THREE.Vector2(aspect * 0.98, 0.98);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -27,33 +40,64 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 20);
-  // Face the stack from +X/−Z so the frame is on the left and time recedes to the right.
-  camera.position.set(2.4, 0.99, -2.7);
-  camera.lookAt(0, 0, 0);
+  const initialPosition = new THREE.Vector3(2.4, 0.99, -2.7);
+  const initialTarget = new THREE.Vector3(0, 0, 0);
+  camera.position.copy(initialPosition);
+  camera.lookAt(initialTarget);
 
   const controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.copy(initialTarget);
   controls.enablePan = false;
   controls.minDistance = 0.7;
   controls.maxDistance = 8;
 
   const uniforms = {
     uVolume: { value: texture },
-    uGhost: { value: GHOST_ALPHA },
-    uCurrent: { value: CURRENT_ALPHA },
     uFrames: { value: frames },
     uFrame: { value: 0 },
+    uGhostSide: { value: GHOST_SIDE },
+    uGhostSideFront: { value: GHOST_SIDE_FRONT },
+    uGhostBack: { value: GHOST_BACK },
   };
 
-  const geometry = new THREE.PlaneGeometry(aspect * 0.98, 0.98);
-  const frameAttr = new THREE.InstancedBufferAttribute(new Float32Array(frames), 1);
-  geometry.setAttribute('aFrame', frameAttr);
-
-  const layers = new THREE.InstancedMesh(
-    geometry,
+  const cube = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 1, 1),
     new THREE.ShaderMaterial({
       uniforms,
-      vertexShader: LAYER_VERT,
-      fragmentShader: LAYER_FRAG,
+      vertexShader: CUBE_VERT,
+      fragmentShader: CUBE_FRAG,
+      side: THREE.DoubleSide,
+      transparent: true,
+      depthWrite: false,
+      toneMapped: false,
+    }),
+  );
+  scene.add(cube);
+
+  const edges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)),
+    new THREE.LineBasicMaterial({ color: 0xf3f0e8, transparent: true, opacity: 0.22 }),
+  );
+  scene.add(edges);
+
+  const innerUniforms = {
+    uVolume: { value: texture },
+    uFrames: { value: frames },
+    uFrame: { value: 0 },
+    uAlphaFront: { value: GHOST_INNER_FRONT },
+    uAlphaFrontNear: { value: GHOST_INNER_FRONT_NEAR },
+    uAlphaRear: { value: GHOST_INNER_REAR },
+    uAlphaRearDeep: { value: GHOST_INNER_REAR_DEEP },
+  };
+  const planeGeo = new THREE.PlaneGeometry(imageSize.x * 0.98, imageSize.y * 0.98);
+  const frameAttr = new THREE.InstancedBufferAttribute(new Float32Array(frames), 1);
+  planeGeo.setAttribute('aFrame', frameAttr);
+  const inner = new THREE.InstancedMesh(
+    planeGeo,
+    new THREE.ShaderMaterial({
+      uniforms: innerUniforms,
+      vertexShader: INNER_VERT,
+      fragmentShader: INNER_FRAG,
       side: THREE.DoubleSide,
       transparent: true,
       depthWrite: false,
@@ -61,32 +105,63 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
     }),
     frames,
   );
-  layers.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  scene.add(layers);
+  scene.add(inner);
 
-  let gap = 0.4;
+  const highlightUniforms = {
+    uVolume: { value: texture },
+    uFrames: { value: frames },
+    uFrame: { value: 0 },
+  };
+  const highlight = new THREE.Mesh(
+    new THREE.PlaneGeometry(imageSize.x * 0.98, imageSize.y * 0.98),
+    new THREE.ShaderMaterial({
+      uniforms: highlightUniforms,
+      vertexShader: HIGHLIGHT_VERT,
+      fragmentShader: HIGHLIGHT_FRAG,
+      side: THREE.DoubleSide,
+      transparent: true,
+      depthWrite: false,
+      toneMapped: false,
+    }),
+  );
+  highlight.rotation.y = Math.PI / 2;
+  highlight.renderOrder = 2;
+  scene.add(highlight);
+
+  let gap = 0.28;
+  let frameIndex = 0;
   let fromFar = true;
   const dummy = new THREE.Object3D();
 
-  function layoutLayers() {
-    const spread = 0.02 + gap * 2.4;
+  function layoutHighlight(spread: number) {
+    const x = (0.5 - frameIndex / (frames - 1)) * spread;
+    highlight.position.set(x, 0, 0);
+  }
+
+  function layoutInner(spread: number) {
     fromFar = camera.position.x >= 0;
     for (let i = 0; i < frames; i++) {
-      // Draw the far slices first so transparency stacks correctly.
-      // Frame 0 stays nearest the default camera (+X).
       const frame = fromFar ? frames - 1 - i : i;
-      dummy.position.set((0.5 - frame / (frames - 1)) * spread, 0, 0);
+      const x = (0.5 - frame / (frames - 1)) * spread;
+      dummy.position.set(x, 0, 0);
       dummy.rotation.set(0, Math.PI / 2, 0);
-      dummy.scale.set(1, 1, 1);
       dummy.updateMatrix();
-      layers.setMatrixAt(i, dummy.matrix);
+      inner.setMatrixAt(i, dummy.matrix);
       frameAttr.setX(i, frame);
     }
-    layers.instanceMatrix.needsUpdate = true;
+    inner.instanceMatrix.needsUpdate = true;
     frameAttr.needsUpdate = true;
   }
 
-  layoutLayers();
+  function applyGap() {
+    const spread = 0.02 + gap * SPREAD;
+    cube.scale.set(spread, imageSize.y, imageSize.x);
+    edges.scale.set(spread, imageSize.y, imageSize.x);
+    layoutInner(spread);
+    layoutHighlight(spread);
+  }
+
+  applyGap();
 
   function resize() {
     const width = container.clientWidth || window.innerWidth;
@@ -100,25 +175,92 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
 
   renderer.setAnimationLoop(() => {
     controls.update();
-    if ((camera.position.x >= 0) !== fromFar) layoutLayers();
+    if ((camera.position.x >= 0) !== fromFar) layoutInner(0.02 + gap * SPREAD);
     renderer.render(scene, camera);
   });
 
   return {
     frameCount: frames,
     setFrame(index) {
-      const frame = Math.max(0, Math.min(frames - 1, Math.round(index)));
-      uniforms.uFrame.value = frame;
+      frameIndex = Math.max(0, Math.min(frames - 1, Math.round(index)));
+      uniforms.uFrame.value = frameIndex;
+      highlightUniforms.uFrame.value = frameIndex;
+      innerUniforms.uFrame.value = frameIndex;
+      layoutHighlight(0.02 + gap * SPREAD);
     },
     setGap(amount) {
       gap = THREE.MathUtils.clamp(amount, 0, 1);
-      layoutLayers();
+      applyGap();
+    },
+    resetView() {
+      camera.position.copy(initialPosition);
+      controls.target.copy(initialTarget);
+      controls.update();
     },
     resize,
   };
 }
 
-const LAYER_VERT = /* glsl */ `
+const CUBE_VERT = /* glsl */ `
+  varying vec3 vLocal;
+  varying vec3 vNormal;
+  void main() {
+    vLocal = position;
+    vNormal = normal;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const CUBE_FRAG = /* glsl */ `
+  precision highp float;
+  precision highp sampler3D;
+  varying vec3 vLocal;
+  varying vec3 vNormal;
+  uniform sampler3D uVolume;
+  uniform float uFrames;
+  uniform float uFrame;
+  uniform float uGhostSide;
+  uniform float uGhostSideFront;
+  uniform float uGhostBack;
+
+  vec3 sampleFrame(float u, float v, float frame) {
+    float z = (frame + 0.5) / uFrames;
+    return texture(uVolume, vec3(u, v, z)).rgb;
+  }
+
+  void main() {
+    vec3 n = normalize(vNormal);
+    vec3 an = abs(n);
+    float uImg = 1.0 - (vLocal.z + 0.5);
+    float vImg = 1.0 - (vLocal.y + 0.5);
+    float t = clamp(1.0 - (vLocal.x + 0.5), 0.0, 1.0);
+    float frameT = t * (uFrames - 1.0);
+
+    vec3 color;
+    float alpha;
+
+    if (an.x > an.y && an.x > an.z) {
+      // Near cap is open so the travelling frame reads clearly; far cap closes the block.
+      if (n.x > 0.0) discard;
+      color = sampleFrame(uImg, vImg, uFrames - 1.0);
+      alpha = uGhostBack;
+    } else if (an.z > an.y) {
+      float uEdge = n.z > 0.0 ? 0.0 : 1.0;
+      color = sampleFrame(uEdge, vImg, frameT);
+      alpha = frameT < uFrame - 0.5 ? uGhostSideFront : uGhostSide;
+      if (frameT < uFrame - 0.5) color *= 1.12;
+    } else {
+      float vEdge = n.y > 0.0 ? 0.0 : 1.0;
+      color = sampleFrame(uImg, vEdge, frameT);
+      alpha = frameT < uFrame - 0.5 ? uGhostSideFront : uGhostSide;
+      if (frameT < uFrame - 0.5) color *= 1.12;
+    }
+
+    gl_FragColor = vec4(color, alpha);
+  }
+`;
+
+const INNER_VERT = /* glsl */ `
   attribute float aFrame;
   varying vec2 vUv;
   varying float vFrame;
@@ -130,7 +272,7 @@ const LAYER_VERT = /* glsl */ `
   }
 `;
 
-const LAYER_FRAG = /* glsl */ `
+const INNER_FRAG = /* glsl */ `
   precision highp float;
   precision highp sampler3D;
   varying vec2 vUv;
@@ -138,16 +280,47 @@ const LAYER_FRAG = /* glsl */ `
   uniform sampler3D uVolume;
   uniform float uFrames;
   uniform float uFrame;
-  uniform float uGhost;
-  uniform float uCurrent;
+  uniform float uAlphaFront;
+  uniform float uAlphaFrontNear;
+  uniform float uAlphaRear;
+  uniform float uAlphaRearDeep;
   void main() {
+    if (abs(vFrame - uFrame) < 0.5) discard;
     float z = (vFrame + 0.5) / uFrames;
     vec3 color = texture(uVolume, vec3(1.0 - vUv.x, 1.0 - vUv.y, z)).rgb;
-    float dist = abs(vFrame - uFrame);
-    float onLayer = 1.0 - step(0.5, dist);
-    float trail = exp(-dist * dist / 120.0);
-    float alpha = mix(uGhost * mix(0.4, 1.0, trail), uCurrent, onLayer);
-    vec3 shown = mix(color * 0.5, color, onLayer);
-    gl_FragColor = vec4(shown, alpha);
+    float alpha;
+    if (vFrame < uFrame - 0.5) {
+      float span = max(uFrame, 1.0);
+      float ahead = clamp((uFrame - vFrame) / span, 0.0, 1.0);
+      alpha = mix(uAlphaFrontNear, uAlphaFront, ahead);
+      color *= mix(1.18, 1.08, ahead);
+    } else {
+      float span = max(uFrames - uFrame - 1.0, 1.0);
+      float behind = clamp((vFrame - uFrame) / span, 0.0, 1.0);
+      alpha = mix(uAlphaRear, uAlphaRearDeep, behind);
+    }
+    gl_FragColor = vec4(color, alpha);
+  }
+`;
+
+const HIGHLIGHT_VERT = /* glsl */ `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const HIGHLIGHT_FRAG = /* glsl */ `
+  precision highp float;
+  precision highp sampler3D;
+  varying vec2 vUv;
+  uniform sampler3D uVolume;
+  uniform float uFrames;
+  uniform float uFrame;
+  void main() {
+    float z = (uFrame + 0.5) / uFrames;
+    vec3 color = texture(uVolume, vec3(1.0 - vUv.x, 1.0 - vUv.y, z)).rgb;
+    gl_FragColor = vec4(color, ${CURRENT});
   }
 `;

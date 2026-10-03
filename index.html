@@ -15,15 +15,36 @@
       </div>
     </div>
     <aside id="panel" hidden>
-      <button type="button" id="play" aria-pressed="false">
-        <svg class="icon" id="icon-play" viewBox="0 0 16 16" aria-hidden="true">
-          <path d="M5 3.2v9.6l8.2-4.8L5 3.2z" fill="currentColor" />
-        </svg>
-        <svg class="icon" id="icon-pause" viewBox="0 0 16 16" aria-hidden="true" hidden>
-          <path d="M4.4 3h2.3v10H4.4V3zm4.9 0h2.3v10H9.3V3z" fill="currentColor" />
-        </svg>
-        <span id="play-label">Play</span>
-      </button>
+      <div class="transport">
+        <button type="button" id="play" aria-pressed="false" aria-label="Play">
+          <svg class="icon" id="icon-play" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M5 3.2v9.6l8.2-4.8L5 3.2z" fill="currentColor" />
+          </svg>
+          <svg class="icon" id="icon-pause" viewBox="0 0 16 16" aria-hidden="true" hidden>
+            <path d="M4.4 3h2.3v10H4.4V3zm4.9 0h2.3v10H9.3V3z" fill="currentColor" />
+          </svg>
+          <span id="play-label">Play</span>
+        </button>
+        <button
+          type="button"
+          id="reset-view"
+          aria-label="Reset camera to the default view"
+          title="Reset camera to the default view"
+        >
+          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+            <circle cx="8" cy="8" r="5.1" fill="none" stroke="currentColor" stroke-width="1.35" />
+            <circle cx="8" cy="8" r="1.15" fill="currentColor" />
+            <path
+              d="M8 2.35v2.1M8 11.55v2.1M2.35 8h2.1M11.55 8h2.1"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.35"
+              stroke-linecap="round"
+            />
+          </svg>
+          <span>Reset view</span>
+        </button>
+      </div>
       <label>
         <span class="label-row">
           <span class="label-title">
@@ -47,8 +68,8 @@
             Gap
           </span>
         </span>
-        <input id="gap" type="range" min="0" max="100" value="40" aria-describedby="gap-hint" />
-        <span class="hint" id="gap-hint">Pulls the frames apart so each slice is easier to see.</span>
+        <input id="gap" type="range" min="0" max="100" value="28" aria-describedby="gap-hint" />
+        <span class="hint" id="gap-hint">Stretches the cube along time so pixel trails read more clearly.</span>
       </label>
     </aside>
     <script type="module" src="/src/main.ts"></script>
