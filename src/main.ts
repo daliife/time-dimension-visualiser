@@ -15,11 +15,12 @@ if (!view || !status || !statusTitle || !statusDetail || !panel || !demoHeader) 
 
 const FRAME_MS = 100;
 /** Bump when clip files change so browsers refetch video assets. */
-const CLIP_CACHE_VERSION = 5;
+const CLIP_CACHE_VERSION = 6;
 
 try {
   const clip = resolveClipId(new URLSearchParams(location.search).get('clip'));
-  const clipUrl = `${import.meta.env.BASE_URL}${clip}.m4v?v=${CLIP_CACHE_VERSION}`;
+  const clipUrl = `${import.meta.env.BASE_URL}${clip}.mp4?v=${CLIP_CACHE_VERSION}`;
+  statusDetail.textContent = 'Loading video…';
   const volume = await loadClipVolume(clipUrl, (done, total) => {
     statusDetail.textContent =
       done === 0 ? `Preparing ${total} frames…` : `Frame ${done} of ${total}`;

@@ -2,7 +2,7 @@
 
 A WebGL view of a short clip as a stack of frames. Time runs left to right, and playback lights the current frame.
 
-Each load samples **72 frames** from a ~4 s clip. Default: [Player dribbling basketball](https://mixkit.co/free-stock-video/player-dribbling-basketball-2282/) (`dribble.m4v`, Mixkit Stock Video Free License).
+Each load samples **72 frames** from a ~4 s clip. Default: [Player dribbling basketball](https://mixkit.co/free-stock-video/player-dribbling-basketball-2282/) (`dribble.mp4`, Mixkit Stock Video Free License). Clips use `.mp4` so mobile Safari can decode them on GitHub Pages.
 
 Three real-time samples (no timelapse). Pick one in the **Clip** menu or with `?clip=`:
 

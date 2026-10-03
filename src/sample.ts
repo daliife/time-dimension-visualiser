@@ -2,6 +2,8 @@ import type { Volume } from './volume';
 
 const FRAME_WIDTH = 256;
 const FRAME_COUNT = 72;
+const LOAD_TIMEOUT_MS = 90_000;
+const SEEK_TIMEOUT_MS = 12_000;
 
 export async function loadClipVolume(
   url: string,
@@ -10,12 +12,21 @@ export async function loadClipVolume(
   const video = document.createElement('video');
   video.muted = true;
   video.playsInline = true;
+  video.setAttribute('playsinline', '');
+  video.setAttribute('webkit-playsinline', '');
   video.preload = 'auto';
   video.src = url;
-  await waitFor(video, 'loadeddata');
+  video.load();
+
+  await waitForMediaReady(video);
+  await primeVideoForScrubbing(video);
 
   const width = FRAME_WIDTH;
   const height = Math.round((FRAME_WIDTH * video.videoHeight) / video.videoWidth);
+  if (!Number.isFinite(height) || height < 1 || !Number.isFinite(video.duration)) {
+    throw new Error('Could not read the clip dimensions');
+  }
+
   const frames = FRAME_COUNT;
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -41,22 +52,48 @@ export async function loadClipVolume(
   return { width, height, frames, data };
 }
 
-function waitFor(video: HTMLVideoElement, event: 'loadeddata'): Promise<void> {
+async function primeVideoForScrubbing(video: HTMLVideoElement): Promise<void> {
+  try {
+    await video.play();
+    video.pause();
+    video.currentTime = 0;
+    await seekTo(video, 0);
+  } catch {
+    // iOS may block play() without a gesture; seeking often still works once metadata is ready.
+  }
+}
+
+function waitForMediaReady(video: HTMLVideoElement): Promise<void> {
   if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) return Promise.resolve();
+
   return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      cleanup();
+      reject(new Error('Video took too long to load. Try Wi‑Fi or refresh the page.'));
+    }, LOAD_TIMEOUT_MS);
+
+    const tryResolve = () => {
+      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        cleanup();
+        resolve();
+      }
+    };
+
     const cleanup = () => {
-      video.removeEventListener(event, onReady);
+      window.clearTimeout(timer);
+      video.removeEventListener('loadeddata', tryResolve);
+      video.removeEventListener('canplay', tryResolve);
       video.removeEventListener('error', onError);
     };
-    const onReady = () => {
-      cleanup();
-      resolve();
-    };
+
     const onError = () => {
       cleanup();
-      reject(new Error('Could not load the clip'));
+      const detail = video.error?.code ? ` (error ${video.error.code})` : '';
+      reject(new Error(`Could not load the clip${detail}`));
     };
-    video.addEventListener(event, onReady);
+
+    video.addEventListener('loadeddata', tryResolve);
+    video.addEventListener('canplay', tryResolve);
     video.addEventListener('error', onError);
   });
 }
@@ -65,19 +102,29 @@ function seekTo(video: HTMLVideoElement, time: number): Promise<void> {
   if (Math.abs(video.currentTime - time) < 0.001 && video.readyState >= 2) {
     return Promise.resolve();
   }
+
   return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      cleanup();
+      reject(new Error('Could not seek the clip (timed out)'));
+    }, SEEK_TIMEOUT_MS);
+
     const cleanup = () => {
+      window.clearTimeout(timer);
       video.removeEventListener('seeked', onSeeked);
       video.removeEventListener('error', onError);
     };
+
     const onSeeked = () => {
       cleanup();
       resolve();
     };
+
     const onError = () => {
       cleanup();
       reject(new Error('Could not seek the clip'));
     };
+
     video.addEventListener('seeked', onSeeked);
     video.addEventListener('error', onError);
     video.currentTime = time;
