@@ -1,17 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Pixel time visualiser">
-  <rect width="32" height="32" rx="7" fill="#080808" />
-  <!-- Frame stack along time (+X); centre slice highlighted -->
-  <rect x="5" y="10" width="3.5" height="12" rx="0.75" fill="#f3f0e8" opacity="0.28" />
-  <rect x="10" y="8" width="3.5" height="14" rx="0.75" fill="#f3f0e8" opacity="0.45" />
-  <rect x="15" y="6" width="3.5" height="16" rx="0.75" fill="#f3f0e8" />
-  <rect x="20" y="8" width="3.5" height="14" rx="0.75" fill="#f3f0e8" opacity="0.45" />
-  <rect x="25" y="10" width="3.5" height="12" rx="0.75" fill="#f3f0e8" opacity="0.28" />
-  <!-- Cube edge hint (time axis) -->
-  <path
-    d="M5 23.5h22"
-    stroke="#f3f0e8"
-    stroke-opacity="0.35"
-    stroke-width="1"
-    stroke-linecap="round"
-  />
+  <rect width="32" height="32" rx="4" fill="#080808" />
+  <rect x="5" y="10" width="4" height="12" fill="#f3f0e8" opacity="0.28" />
+  <rect x="10" y="8" width="4" height="14" fill="#f3f0e8" opacity="0.45" />
+  <rect x="15" y="6" width="4" height="16" fill="#f3f0e8" />
+  <rect x="20" y="8" width="4" height="14" fill="#f3f0e8" opacity="0.45" />
+  <rect x="25" y="10" width="4" height="12" fill="#f3f0e8" opacity="0.28" />
+  <rect x="5" y="24" width="24" height="1" fill="#f3f0e8" opacity="0.35" />
 </svg>
