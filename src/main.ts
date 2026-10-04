@@ -39,7 +39,7 @@ function writePanelPref(open: boolean) {
 
 const FRAME_MS = 100;
 /** Bump when clip files change so browsers refetch video assets. */
-const CLIP_CACHE_VERSION = 6;
+const CLIP_CACHE_VERSION = 10;
 
 function setPanelOpen(open: boolean) {
   panel!.classList.toggle('is-collapsed', !open);

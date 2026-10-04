@@ -1,7 +1,7 @@
 export const CLIPS = [
   { id: 'dribble', label: 'Basketball dribble' },
   { id: 'kick', label: 'Football kick' },
-  { id: 'skate', label: 'Skateboard ramp' },
+  { id: 'hurdles', label: 'Hurdle jump silhouette' },
 ] as const;
 
 export type ClipId = (typeof CLIPS)[number]['id'];

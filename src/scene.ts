@@ -19,13 +19,15 @@ const GHOST_INNER_FRONT_NEAR = 0.085;
 const GHOST_INNER_REAR = 0.22;
 const GHOST_INNER_REAR_DEEP = 0.38;
 const CURRENT = 0.94;
-const SPREAD = 2.0;
+const SPREAD = 3.25;
+const DEPTH_FAN = 0.14;
+const PLANE_SHRINK = 0.1;
 
 export function createScene(container: HTMLElement, volume: Volume): SceneHandle {
   const { frames } = volume;
   const texture = createVolumeTexture(volume);
   texture.magFilter = THREE.NearestFilter;
-  texture.minFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.NearestFilter;
   texture.needsUpdate = true;
 
   const aspect = volume.width / volume.height;
@@ -51,7 +53,7 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 20);
-  const initialPosition = new THREE.Vector3(2.4, 0.99, -2.7);
+  const initialPosition = new THREE.Vector3(0.95, 2.55, -2.35);
   const initialTarget = new THREE.Vector3(0, 0, 0);
   camera.position.copy(initialPosition);
   camera.lookAt(initialTarget);
@@ -154,7 +156,7 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
   highlight.renderOrder = 2;
   scene.add(highlight);
 
-  let gap = 0.28;
+  let gap = 0.42;
   let frameIndex = 0;
   let fromFar = true;
   const dummy = new THREE.Object3D();
@@ -166,15 +168,20 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
 
   function layoutInner(spread: number) {
     fromFar = camera.position.x >= 0;
+    const shrink = 1 - gap * PLANE_SHRINK;
     for (let i = 0; i < frames; i++) {
       const frame = fromFar ? frames - 1 - i : i;
-      const x = (0.5 - frame / (frames - 1)) * spread;
-      dummy.position.set(x, 0, 0);
+      const t = frame / (frames - 1);
+      const x = (0.5 - t) * spread;
+      const z = (t - 0.5) * spread * DEPTH_FAN;
+      dummy.position.set(x, 0, z);
       dummy.rotation.set(0, Math.PI / 2, 0);
+      dummy.scale.set(shrink, shrink, 1);
       dummy.updateMatrix();
       inner.setMatrixAt(i, dummy.matrix);
       frameAttr.setX(i, frame);
     }
+    dummy.scale.set(1, 1, 1);
     inner.instanceMatrix.needsUpdate = true;
     frameAttr.needsUpdate = true;
   }
