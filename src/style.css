@@ -315,6 +315,7 @@ body,
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   min-height: 44px;
   padding: 0 18px;
   border: 0;
@@ -691,7 +692,7 @@ body.is-loaded #panel:not([hidden]).is-collapsed {
   #panel {
     left: 12px;
     right: 12px;
-    bottom: max(14px, env(safe-area-inset-bottom, 0px));
+    bottom: max(16px, env(safe-area-inset-bottom, 0px));
     width: auto;
     max-height: min(54dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 88px));
     overflow: hidden;
@@ -703,15 +704,16 @@ body.is-loaded #panel:not([hidden]).is-collapsed {
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     gap: 18px;
-    padding: 16px 16px calc(36px + env(safe-area-inset-bottom, 0px));
+    padding: 16px 16px calc(56px + env(safe-area-inset-bottom, 0px));
   }
 
   .control-group--sliders .control-field:last-child {
-    padding-bottom: 10px;
+    padding-bottom: 4px;
   }
 
   .control-group--sliders .control-field:last-child input[type='range'] {
-    margin-bottom: 6px;
+    display: block;
+    margin-bottom: 12px;
   }
 
   .panel-collapse {
