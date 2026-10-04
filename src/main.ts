@@ -49,14 +49,20 @@ function setPanelOpen(open: boolean) {
   writePanelPref(open);
 }
 
+let slowLoadTimer = 0;
+
 try {
   const clip = resolveClipId(new URLSearchParams(location.search).get('clip'));
   const clipUrl = `${import.meta.env.BASE_URL}${clip}.mp4?v=${CLIP_CACHE_VERSION}`;
   statusDetail.textContent = 'Loading video…';
+  slowLoadTimer = window.setTimeout(() => {
+    statusDetail.textContent = 'Still loading video — mobile networks can be slow…';
+  }, 18_000);
   const volume = await loadClipVolume(clipUrl, (done, total) => {
     statusDetail.textContent =
       done === 0 ? `Preparing ${total} frames…` : `Frame ${done} of ${total}`;
   });
+  window.clearTimeout(slowLoadTimer);
   const scene = createScene(view, volume);
 
   function required<T extends Element>(selector: string): T {
@@ -221,6 +227,7 @@ try {
     status.classList.remove('is-exiting');
   }, 480);
 } catch (error) {
+  window.clearTimeout(slowLoadTimer);
   status.classList.add('is-error');
   statusTitle.textContent = 'Could not load';
   statusDetail.textContent = error instanceof Error ? error.message : 'Could not load the clip';

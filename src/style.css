@@ -206,13 +206,15 @@ body,
   gap: 5px;
   height: 32px;
   margin-bottom: 8px;
+  transform: translateZ(0);
 }
 
 .loader-frame {
   width: 6px;
   background: var(--color-primary);
   opacity: 0.28;
-  transform-origin: bottom center;
+  transform: translateZ(0);
+  will-change: opacity;
   animation: loader-frame-pulse 1.15s ease-in-out infinite;
 }
 
@@ -265,19 +267,27 @@ body,
 @keyframes loader-frame-pulse {
   0%,
   100% {
-    opacity: 0.28;
-    transform: scaleY(0.82);
+    opacity: 0.22;
   }
 
-  35% {
+  40% {
     opacity: 1;
-    transform: scaleY(1);
   }
 
-  55% {
-    opacity: 0.55;
-    transform: scaleY(0.92);
+  65% {
+    opacity: 0.5;
   }
+}
+
+.clip-loader-video {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0.01;
+  pointer-events: none;
+  z-index: -1;
 }
 
 @media (prefers-reduced-motion: reduce) {
