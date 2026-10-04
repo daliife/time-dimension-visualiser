@@ -27,9 +27,33 @@
       </div>
     </div>
     <div id="announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+    <button type="button" id="panel-open" class="panel-open" hidden aria-controls="panel">
+      Controls
+    </button>
     <aside id="panel" tabindex="-1" aria-labelledby="panel-title" aria-describedby="panel-help" hidden>
+      <div class="panel-body">
       <div class="panel-intro">
-        <h2 id="panel-title" class="panel-title">Controls</h2>
+        <div class="panel-head">
+          <h2 id="panel-title" class="panel-title">Controls</h2>
+          <button
+            type="button"
+            id="panel-collapse"
+            class="panel-collapse"
+            aria-label="Hide controls"
+            aria-expanded="true"
+          >
+            <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+              <path
+                d="M4 6.2l4 3.6 4-3.6"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
         <ul id="panel-help" class="panel-help">
           <li>Drag to rotate, scroll to zoom.</li>
           <li>Press <kbd>Space</kbd> to play or pause.</li>
@@ -63,7 +87,7 @@
                 stroke-linecap="round"
               />
             </svg>
-            <span id="reset-view-label">Reset view</span>
+            <span id="reset-view-label" class="visually-hidden">Reset view</span>
           </button>
         </div>
       </div>
@@ -130,6 +154,7 @@
             aria-describedby="gap-hint"
           />
         </div>
+      </div>
       </div>
     </aside>
     <script type="module" src="/src/main.ts"></script>

@@ -9,13 +9,45 @@ const statusTitle = document.querySelector<HTMLElement>('#status-title');
 const statusDetail = document.querySelector<HTMLElement>('#status-detail');
 const panel = document.querySelector<HTMLElement>('#panel');
 const demoHeader = document.querySelector<HTMLElement>('#demo-header');
-if (!view || !status || !statusTitle || !statusDetail || !panel || !demoHeader) {
+const panelOpen = document.querySelector<HTMLButtonElement>('#panel-open');
+const panelCollapse = document.querySelector<HTMLButtonElement>('#panel-collapse');
+if (!view || !status || !statusTitle || !statusDetail || !panel || !demoHeader || !panelOpen || !panelCollapse) {
   throw new Error('Missing page elements');
+}
+
+const MOBILE_PANEL = window.matchMedia('(max-width: 640px)');
+const PANEL_PREF_KEY = 'panel-open';
+
+function readPanelPref(): boolean | null {
+  try {
+    const value = localStorage.getItem(PANEL_PREF_KEY);
+    if (value === '1') return true;
+    if (value === '0') return false;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function writePanelPref(open: boolean) {
+  try {
+    localStorage.setItem(PANEL_PREF_KEY, open ? '1' : '0');
+  } catch {
+    /* ignore */
+  }
 }
 
 const FRAME_MS = 100;
 /** Bump when clip files change so browsers refetch video assets. */
 const CLIP_CACHE_VERSION = 6;
+
+function setPanelOpen(open: boolean) {
+  panel!.classList.toggle('is-collapsed', !open);
+  panelCollapse!.setAttribute('aria-expanded', String(open));
+  panelOpen!.hidden = open;
+  panel!.hidden = false;
+  writePanelPref(open);
+}
 
 try {
   const clip = resolveClipId(new URLSearchParams(location.search).get('clip'));
@@ -140,6 +172,9 @@ try {
     location.search = params.toString();
   });
 
+  panelOpen.addEventListener('click', () => setPanelOpen(true));
+  panelCollapse.addEventListener('click', () => setPanelOpen(false));
+
   window.addEventListener('keydown', (event) => {
     if (shouldIgnoreGlobalShortcuts(event.target)) return;
     if (event.code === 'Space') {
@@ -171,8 +206,10 @@ try {
 
   requestAnimationFrame(tick);
 
-  panel.hidden = false;
   demoHeader.hidden = false;
+  const savedPanel = readPanelPref();
+  const panelOpenDefault = savedPanel ?? !MOBILE_PANEL.matches;
+  setPanelOpen(panelOpenDefault);
   status.classList.add('is-exiting');
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
