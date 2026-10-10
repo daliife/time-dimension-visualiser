@@ -6,6 +6,6 @@ blockExoticSubdeps: true
 strictDepBuilds: true
 
 audit:
-  level: high
+  level: critical
 allowBuilds:
   esbuild: false

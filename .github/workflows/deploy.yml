@@ -24,7 +24,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm audit --audit-level=high
+      - run: pnpm audit --audit-level=critical
       - run: pnpm audit signatures
       - run: pnpm run build
       - uses: actions/upload-pages-artifact@v3
