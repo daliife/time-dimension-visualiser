@@ -155,8 +155,7 @@ try {
     );
   }
 
-  const initialFrame = Math.round((scene.frameCount - 1) / 2);
-  showFrame(initialFrame);
+  showFrame(0);
   setPlaying(false);
   syncGapControl();
 

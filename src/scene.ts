@@ -55,13 +55,10 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 20);
-  const initialPosition = new THREE.Vector3(0.95, 2.55, -2.35);
-  const initialTarget = new THREE.Vector3(0, 0, 0);
-  camera.position.copy(initialPosition);
-  camera.lookAt(initialTarget);
+  const initialPosition = new THREE.Vector3();
+  const initialTarget = new THREE.Vector3();
 
   const controls = new OrbitControls(camera, renderer.domElement);
-  controls.target.copy(initialTarget);
   controls.enablePan = false;
   controls.minDistance = 0.7;
   controls.maxDistance = 8;
@@ -186,6 +183,33 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
     };
   }
 
+  /** Default / reset camera: fit the full stack plus the second ruler in frame. */
+  function syncDefaultView() {
+    const spread = 0.02 + gap * SPREAD;
+    const { y: rulerY } = axisPlacement();
+    const viewBottom = rulerY - 0.09;
+    const viewTop = imageSize.y * 0.52;
+    const halfX = spread * 0.52;
+    const halfY = (viewTop - viewBottom) * 0.5;
+    const halfZ = imageSize.x * 0.54;
+    initialTarget.set(0, (viewTop + viewBottom) * 0.5, 0);
+    const radius = Math.hypot(halfX, halfY, halfZ);
+    const fovRad = (camera.fov * Math.PI) / 180;
+    const distance = (radius / Math.sin(fovRad / 2)) * 1.22;
+    initialPosition.set(
+      initialTarget.x + distance * 0.28,
+      initialTarget.y + distance * 0.72,
+      initialTarget.z - distance * 0.64,
+    );
+  }
+
+  function applyDefaultView() {
+    syncDefaultView();
+    camera.position.copy(initialPosition);
+    controls.target.copy(initialTarget);
+    controls.update();
+  }
+
   function clearAxisParts() {
     for (const part of axisParts) {
       timeAxisGroup.remove(part);
@@ -305,6 +329,7 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
   }
 
   applyGap();
+  applyDefaultView();
 
   function resize() {
     const width = container.clientWidth || window.innerWidth;
@@ -336,9 +361,7 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
       applyGap();
     },
     resetView() {
-      camera.position.copy(initialPosition);
-      controls.target.copy(initialTarget);
-      controls.update();
+      applyDefaultView();
     },
     resize,
   };
