@@ -24,6 +24,9 @@ const DEPTH_FAN = 0.14;
 const PLANE_SHRINK = 0.1;
 /** Keep in sync with clip length in `main.ts`. */
 const CLIP_DURATION_SEC = 4;
+/** Draw the current frame after ghost sheets; nudge slightly toward the camera so depth wins when orbiting. */
+const HIGHLIGHT_RENDER_ORDER = 20;
+const HIGHLIGHT_TOWARD_CAMERA = 0.018;
 
 export function createScene(container: HTMLElement, volume: Volume): SceneHandle {
   const { frames } = volume;
@@ -132,6 +135,7 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
     }),
     frames,
   );
+  inner.renderOrder = 0;
   scene.add(inner);
 
   const highlightUniforms = {
@@ -147,12 +151,15 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
       fragmentShader: HIGHLIGHT_FRAG,
       side: THREE.DoubleSide,
       transparent: true,
-      depthWrite: false,
+      depthWrite: true,
+      polygonOffset: true,
+      polygonOffsetFactor: -4,
+      polygonOffsetUnits: -4,
       toneMapped: false,
     }),
   );
   highlight.rotation.y = Math.PI / 2;
-  highlight.renderOrder = 2;
+  highlight.renderOrder = HIGHLIGHT_RENDER_ORDER;
   scene.add(highlight);
 
   const AXIS_COLOR = 0xf3f0e8;
@@ -164,6 +171,7 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
   let frameIndex = 0;
   let fromFar = true;
   const dummy = new THREE.Object3D();
+  const highlightNudge = new THREE.Vector3();
 
   function frameX(index: number, spread: number) {
     const t = index / (frames - 1);
@@ -297,6 +305,12 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
 
   function layoutHighlight(spread: number) {
     highlight.position.set(frameX(frameIndex, spread), 0, 0);
+    highlightNudge.subVectors(camera.position, highlight.position);
+    const dist = highlightNudge.length();
+    if (dist > 1e-6) {
+      highlightNudge.multiplyScalar(HIGHLIGHT_TOWARD_CAMERA / dist);
+      highlight.position.add(highlightNudge);
+    }
   }
 
   function layoutInner(spread: number) {
@@ -343,7 +357,9 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
 
   renderer.setAnimationLoop(() => {
     controls.update();
-    if ((camera.position.x >= 0) !== fromFar) layoutInner(0.02 + gap * SPREAD);
+    const spread = 0.02 + gap * SPREAD;
+    if ((camera.position.x >= 0) !== fromFar) layoutInner(spread);
+    layoutHighlight(spread);
     renderer.render(scene, camera);
   });
 
@@ -451,7 +467,7 @@ const INNER_FRAG = /* glsl */ `
   uniform float uAlphaRear;
   uniform float uAlphaRearDeep;
   void main() {
-    if (abs(vFrame - uFrame) < 0.5) discard;
+    if (abs(vFrame - uFrame) < 0.501) discard;
     float z = (vFrame + 0.5) / uFrames;
     vec3 color = texture(uVolume, vec3(1.0 - vUv.x, 1.0 - vUv.y, z)).rgb;
     float alpha;

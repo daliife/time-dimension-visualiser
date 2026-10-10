@@ -113,7 +113,7 @@ try {
   function syncTimeControl(index: number) {
     timeInput.value = String(index);
     timeInput.setAttribute('aria-valuetext', frameSummary(index));
-    timeValue.textContent = `${index} / ${lastFrame} · ${formatClipTime(index)}`;
+    timeValue.textContent = `${index + 1} / ${scene.frameCount} · ${formatClipTime(index)}`;
   }
 
   function syncGapControl() {
