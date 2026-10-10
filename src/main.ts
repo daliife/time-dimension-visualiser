@@ -38,6 +38,8 @@ function writePanelPref(open: boolean) {
 }
 
 const FRAME_MS = 100;
+/** Matches ~4 s samples in `public/*.mp4`. */
+const CLIP_DURATION_SEC = 4;
 /** Bump when clip files change so browsers refetch video assets. */
 const CLIP_CACHE_VERSION = 10;
 
@@ -82,7 +84,6 @@ try {
   const gapValue = required<HTMLElement>('#gap-value');
   const clipSelect = required<HTMLSelectElement>('#clip');
   const announcer = required<HTMLElement>('#announcer');
-
   for (const entry of CLIPS) {
     const option = document.createElement('option');
     option.value = entry.id;
@@ -99,14 +100,20 @@ try {
   const lastFrame = scene.frameCount - 1;
   timeInput.max = String(lastFrame);
 
+  function formatClipTime(index: number) {
+    if (lastFrame <= 0) return '0.00 s';
+    const seconds = (index / lastFrame) * CLIP_DURATION_SEC;
+    return `${seconds.toFixed(2)} s`;
+  }
+
   function frameSummary(index: number) {
-    return `Frame ${index + 1} of ${scene.frameCount}`;
+    return `Frame ${index + 1} of ${scene.frameCount}, ${formatClipTime(index)}`;
   }
 
   function syncTimeControl(index: number) {
     timeInput.value = String(index);
     timeInput.setAttribute('aria-valuetext', frameSummary(index));
-    timeValue.textContent = `${index} / ${lastFrame}`;
+    timeValue.textContent = `${index} / ${lastFrame} · ${formatClipTime(index)}`;
   }
 
   function syncGapControl() {
@@ -180,6 +187,20 @@ try {
 
   panelOpen.addEventListener('click', () => setPanelOpen(true));
   panelCollapse.addEventListener('click', () => setPanelOpen(false));
+
+  const guideDialog = required<HTMLDialogElement>('#guide-dialog');
+  const guideOpen = required<HTMLButtonElement>('#guide-open');
+  const guideClose = required<HTMLButtonElement>('#guide-close');
+
+  guideOpen.addEventListener('click', () => {
+    guideDialog.showModal();
+  });
+  guideClose.addEventListener('click', () => {
+    guideDialog.close();
+  });
+  guideDialog.addEventListener('click', (event) => {
+    if (event.target === guideDialog) guideDialog.close();
+  });
 
   window.addEventListener('keydown', (event) => {
     if (shouldIgnoreGlobalShortcuts(event.target)) return;

@@ -22,6 +22,8 @@ const CURRENT = 0.94;
 const SPREAD = 3.25;
 const DEPTH_FAN = 0.14;
 const PLANE_SHRINK = 0.1;
+/** Keep in sync with clip length in `main.ts`. */
+const CLIP_DURATION_SEC = 4;
 
 export function createScene(container: HTMLElement, volume: Volume): SceneHandle {
   const { frames } = volume;
@@ -156,14 +158,121 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
   highlight.renderOrder = 2;
   scene.add(highlight);
 
+  const AXIS_COLOR = 0xf3f0e8;
+  const timeAxisGroup = new THREE.Group();
+  scene.add(timeAxisGroup);
+  const axisParts: THREE.Object3D[] = [];
+
   let gap = 0.42;
   let frameIndex = 0;
   let fromFar = true;
   const dummy = new THREE.Object3D();
 
+  function frameX(index: number, spread: number) {
+    const t = index / (frames - 1);
+    return (0.5 - t) * spread;
+  }
+
+  function timeToX(seconds: number, spread: number) {
+    const t = CLIP_DURATION_SEC > 0 ? seconds / CLIP_DURATION_SEC : 0;
+    return (0.5 - t) * spread;
+  }
+
+  /** Front-left of the stack (toward the default camera) so the rail reads clearly. */
+  function axisPlacement() {
+    return {
+      y: -imageSize.y * 0.34,
+      z: -(imageSize.x * 0.5 + 0.14),
+    };
+  }
+
+  function clearAxisParts() {
+    for (const part of axisParts) {
+      timeAxisGroup.remove(part);
+      if (part instanceof THREE.Sprite) {
+        const mat = part.material;
+        mat.map?.dispose();
+        mat.dispose();
+      } else if (part instanceof THREE.Mesh || part instanceof THREE.Line || part instanceof THREE.LineSegments) {
+        part.geometry.dispose();
+        const mat = part.material;
+        if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
+        else mat.dispose();
+      }
+    }
+    axisParts.length = 0;
+  }
+
+  function addAxisLine(points: THREE.Vector3[], opacity: number) {
+    const line = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(points),
+      new THREE.LineBasicMaterial({ color: AXIS_COLOR, transparent: true, opacity }),
+    );
+    timeAxisGroup.add(line);
+    axisParts.push(line);
+  }
+
+  function addRulerTick(x: number, y: number, z: number, height: number, opacity: number) {
+    addAxisLine([new THREE.Vector3(x, y, z), new THREE.Vector3(x, y + height, z)], opacity);
+  }
+
+  function addRulerLabel(text: string, x: number, y: number, z: number) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 96;
+    canvas.height = 48;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = '600 28px ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace';
+    ctx.fillStyle = '#f3f0e8';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+    const map = new THREE.CanvasTexture(canvas);
+    map.magFilter = THREE.NearestFilter;
+    map.minFilter = THREE.NearestFilter;
+    const sprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map, transparent: true, depthTest: true, toneMapped: false }),
+    );
+    sprite.center.set(0.5, 1);
+    sprite.position.set(x, y, z);
+    sprite.scale.set(0.11, 0.055, 1);
+    timeAxisGroup.add(sprite);
+    axisParts.push(sprite);
+  }
+
+  function layoutTimeAxis(spread: number) {
+    clearAxisParts();
+    const { y, z } = axisPlacement();
+    const xStart = timeToX(0, spread);
+    const xEnd = timeToX(CLIP_DURATION_SEC, spread);
+
+    addAxisLine([new THREE.Vector3(xStart, y, z), new THREE.Vector3(xEnd, y, z)], 0.9);
+
+    const minorStep = 0.1;
+    const steps = Math.round(CLIP_DURATION_SEC / minorStep);
+    for (let i = 0; i <= steps; i++) {
+      const sec = i * minorStep;
+      const x = timeToX(sec, spread);
+      const wholeSecond = i % 10 === 0;
+      const halfSecond = i % 5 === 0 && !wholeSecond;
+      if (wholeSecond) {
+        addRulerTick(x, y, z, 0.045, 0.9);
+      } else if (halfSecond) {
+        addRulerTick(x, y, z, 0.03, 0.55);
+      } else {
+        addRulerTick(x, y, z, 0.016, 0.32);
+      }
+    }
+
+    for (let sec = 0; sec <= CLIP_DURATION_SEC; sec++) {
+      const x = timeToX(sec, spread);
+      addRulerLabel(String(sec), x, y - 0.018, z);
+    }
+  }
+
   function layoutHighlight(spread: number) {
-    const x = (0.5 - frameIndex / (frames - 1)) * spread;
-    highlight.position.set(x, 0, 0);
+    highlight.position.set(frameX(frameIndex, spread), 0, 0);
   }
 
   function layoutInner(spread: number) {
@@ -191,6 +300,7 @@ export function createScene(container: HTMLElement, volume: Volume): SceneHandle
     cube.scale.set(spread, imageSize.y, imageSize.x);
     edges.scale.set(spread, imageSize.y, imageSize.x);
     layoutInner(spread);
+    layoutTimeAxis(spread);
     layoutHighlight(spread);
   }
 
